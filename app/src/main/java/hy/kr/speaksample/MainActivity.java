@@ -16,7 +16,7 @@ import android.widget.ToggleButton;
 import java.util.ArrayList;
 
 
-public class MainActivity extends Activity implements RecognitionListener {
+public class MainActivity extends Activity implements RecognitionListener, CompoundButton.OnCheckedChangeListener {
 
 
     private TextView returnedText;
@@ -26,43 +26,17 @@ public class MainActivity extends Activity implements RecognitionListener {
     private Intent recognizerIntent;
     private String LOG_TAG = "VoiceRecognitionActivity";
 
+    final private String EXAMSTR = "show me the money";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        returnedText = (TextView) findViewById(R.id.textView1);
-        progressBar = (ProgressBar) findViewById(R.id.progressBar1);
-        toggleButton = (ToggleButton) findViewById(R.id.toggleButton1);
+        layoutSet();
 
-        progressBar.setVisibility(View.INVISIBLE);
-        speech = SpeechRecognizer.createSpeechRecognizer(this);
-        speech.setRecognitionListener(this);
-        recognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-        recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
-                "en-US");
-        recognizerIntent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE,
-                this.getPackageName());
-        recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
-                RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH);
-        recognizerIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
-        recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US");
 
-        toggleButton.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+        speechtSet();
 
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView,
-                                         boolean isChecked) {
-                if (isChecked) {
-                    progressBar.setVisibility(View.VISIBLE);
-                    progressBar.setIndeterminate(true);
-                    speech.startListening(recognizerIntent);
-                } else {
-                    progressBar.setIndeterminate(false);
-                    progressBar.setVisibility(View.INVISIBLE);
-                    speech.stopListening();
-                }
-            }
-        });
 
     }
 
@@ -81,12 +55,35 @@ public class MainActivity extends Activity implements RecognitionListener {
 
     }
 
+    /**
+     * 결과값
+     * @param results
+     */
+    @Override
+    public void onResults(Bundle results) {
+        Log.i(LOG_TAG, "onResults");
+        Log.i(LOG_TAG, results.toString());
+
+
+        ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+
+
+        String text = "";
+        for (String result : matches)
+            text += result + "\n";
+
+        returnedText.setText(text);
+
+    }
+
+
     @Override
     public void onBeginningOfSpeech() {
         Log.i(LOG_TAG, "onBeginningOfSpeech");
         progressBar.setIndeterminate(false);
         progressBar.setMax(10);
     }
+
 
     @Override
     public void onBufferReceived(byte[] buffer) {
@@ -123,17 +120,6 @@ public class MainActivity extends Activity implements RecognitionListener {
         Log.i(LOG_TAG, "onReadyForSpeech");
     }
 
-    @Override
-    public void onResults(Bundle results) {
-        Log.i(LOG_TAG, "onResults");
-        ArrayList<String> matches = results
-                .getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-        String text = "";
-        for (String result : matches)
-            text += result + "\n";
-
-        returnedText.setText(text);
-    }
 
     @Override
     public void onRmsChanged(float rmsdB) {
@@ -178,4 +164,53 @@ public class MainActivity extends Activity implements RecognitionListener {
         return message;
     }
 
+
+    private void layoutSet() {
+        returnedText = (TextView) findViewById(R.id.textView1);
+        progressBar = (ProgressBar) findViewById(R.id.progressBar1);
+        toggleButton = (ToggleButton) findViewById(R.id.toggleButton1);
+
+        progressBar.setVisibility(View.INVISIBLE);
+        toggleButton.setOnCheckedChangeListener(this);
+
+    }
+
+    private void speechtSet() {
+
+        speech = SpeechRecognizer.createSpeechRecognizer(this);
+        speech.setRecognitionListener(this);
+        recognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE,
+                "en-US");
+        recognizerIntent.putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE,
+                this.getPackageName());
+        recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_WEB_SEARCH);
+        recognizerIntent.putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3);
+        recognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US");
+        recognizerIntent.putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 8000);
+        recognizerIntent.putExtra("android.speech.extra.GET_AUDIO_FORMAT", "audio/AMR");
+        recognizerIntent.putExtra("android.speech.extra.GET_AUDIO", true);
+    }
+
+
+    @Override
+    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
+        switch (buttonView.getId()) {
+
+            case R.id.toggleButton1:
+
+                if (isChecked) {
+                    progressBar.setVisibility(View.VISIBLE);
+                    progressBar.setIndeterminate(true);
+                    speech.startListening(recognizerIntent);
+                } else {
+                    progressBar.setIndeterminate(false);
+                    progressBar.setVisibility(View.INVISIBLE);
+                    speech.stopListening();
+
+                }
+                break;
+        }
+    }
 }
