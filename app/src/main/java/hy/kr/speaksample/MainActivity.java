@@ -11,13 +11,15 @@ import android.view.View;
 import android.widget.CompoundButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.ToggleButton;
 
 import java.util.ArrayList;
 
+import hy.kr.speaksample.obj.TextObj;
+
 
 public class MainActivity extends Activity implements RecognitionListener, CompoundButton.OnCheckedChangeListener {
-
 
     private TextView returnedText;
     private ToggleButton toggleButton;
@@ -26,18 +28,15 @@ public class MainActivity extends Activity implements RecognitionListener, Compo
     private Intent recognizerIntent;
     private String LOG_TAG = "VoiceRecognitionActivity";
 
-    final private String EXAMSTR = "show me the money";
+    //private String EXAM_STR = "want you see all those animals you should fell better";
+    private String EXAM_STR = "show me the money";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         layoutSet();
-
-
-        speechtSet();
-
-
+        speechSet();
     }
 
     @Override
@@ -52,30 +51,32 @@ public class MainActivity extends Activity implements RecognitionListener, Compo
             speech.destroy();
             Log.i(LOG_TAG, "destroy");
         }
-
     }
 
     /**
      * 결과값
+     *
      * @param results
      */
     @Override
     public void onResults(Bundle results) {
-        Log.i(LOG_TAG, "onResults");
-        Log.i(LOG_TAG, results.toString());
-
 
         ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-
-
         String text = "";
-        for (String result : matches)
+
+        for (String result : matches) //text에 남기기
             text += result + "\n";
 
         returnedText.setText(text);
 
+        if (strToArrayCompare(EXAM_STR, matches)) {//리스트중 같은 문장이 있나
+            Toast.makeText(this, "100점", Toast.LENGTH_LONG).show();
+        } else {//문장이 없다면 비교
+            ArrayList<TextObj> listTexObj = getListTextObj(matches);
+            setScoreTextObj(listTexObj);// EXAM_STR를 기준으로 점수 넣기
+            Toast.makeText(this, bestScore(listTexObj) + "점", Toast.LENGTH_LONG).show();
+        }
     }
-
 
     @Override
     public void onBeginningOfSpeech() {
@@ -175,7 +176,7 @@ public class MainActivity extends Activity implements RecognitionListener, Compo
 
     }
 
-    private void speechtSet() {
+    private void speechSet() {
 
         speech = SpeechRecognizer.createSpeechRecognizer(this);
         speech.setRecognitionListener(this);
@@ -192,7 +193,6 @@ public class MainActivity extends Activity implements RecognitionListener, Compo
         recognizerIntent.putExtra("android.speech.extra.GET_AUDIO_FORMAT", "audio/AMR");
         recognizerIntent.putExtra("android.speech.extra.GET_AUDIO", true);
     }
-
 
     @Override
     public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
@@ -213,4 +213,118 @@ public class MainActivity extends Activity implements RecognitionListener, Compo
                 break;
         }
     }
+
+    /**
+     * 문자열 - 배열[문자열] 일치한게 있는지 판단
+     *
+     * @param inputString
+     * @param items
+     * @return
+     */
+    private boolean strToArrayCompare(String inputString, ArrayList<String> items) {
+        for (int i = 0; i < items.size(); i++) {
+            if (inputString.contains(items.get(i))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 문자열 - 배열[문자열] 일치한게 있는지 판단
+     *
+     * @param inputString
+     * @param items
+     * @return
+     */
+    private boolean strToArrayCompare(String inputString, String[] items) {
+        for (int i = 0; i < items.length; i++) {
+            if (inputString.contains(items[i])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 배열[문자열]->배열[TextObj]
+     *
+     * @param list
+     * @return
+     */
+    private ArrayList<TextObj> getListTextObj(ArrayList<String> list) {
+        ArrayList<TextObj> listText = new ArrayList<>();
+
+        for (String result : list) {
+            TextObj obj = new TextObj(result);
+            listText.add(obj);
+        }
+
+        return listText;
+    }
+
+    /**
+     * 예제와 배열[TextObj] 텍스트 비교해서 배열[TextObj] score 에 값 넣기
+     *
+     * @param listTexObj
+     */
+    private void setScoreTextObj(ArrayList<TextObj> listTexObj) {
+        String[] examArray = EXAM_STR.split(" ");
+        for (TextObj result : listTexObj) {//점수넣기
+            int score = compareWords(examArray, result.getStrWords());
+            result.setScore(score);//단어비교&점수넣기
+            Log.i("score", "점수:" + score);
+        }
+    }
+
+    /**
+     * 단어 비교 ex) [I] [am] [a] [boy] =?[I] [am] [a] [girl]
+     *
+     * @param examArray 예문 문자열 배열
+     * @param textArray 말한거 문자열 배열
+     * @return (맞는문장수/전체문장수)*100
+     */
+    private int compareWords(String[] examArray, String[] textArray) {
+
+        int count = 0;
+        for (int i = 0; i < examArray.length; i++) {//예제 기준으로
+            if (strToArrayCompare(examArray[i], textArray)) {//예문과 말한거 문자열 비교
+                count++;
+            }
+        }
+        if (count == 0) {
+            return 0;
+        } else {
+
+            double result = ((double) count / (double) examArray.length) * 100;
+            return (int) result;
+        }
+
+    }
+
+    /**
+     * 알파벳 비교 ex) [I] [a][m] [a] [b][o][y] =?[I] [a][m] [a] [g][i][r][l]
+     *
+     * @param examArray 예문 문자열 배열
+     * @param textArray 말한거 문자열 배열
+     * @param score     점수
+     */
+    private void compareAlphabet(String[] examArray, String[] textArray, int score) {
+    }
+
+    private int bestScore(ArrayList<TextObj> testObjArray) {
+
+        int maxScore = 0;//점수
+        int maxCount = 0;
+        for (int i = 0; i < testObjArray.size(); i++) {
+            if (maxScore < testObjArray.get(i).getScore()) {
+                maxScore = testObjArray.get(i).getScore();
+                maxCount = i;
+            }
+        }
+
+        return testObjArray.get(maxCount).getScore();
+    }
+
+
 }
